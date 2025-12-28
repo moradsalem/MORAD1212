@@ -1,0 +1,1054 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عالم روائع الثريا - مخطط نقاط دقيق</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        /* العنوان الرئيسي */
+        .brand-header {
+            text-align: center;
+            padding: 15px 10px 5px;
+            margin-bottom: 5px;
+        }
+        
+        .main-title {
+            font-size: 1.7rem;
+            color: #8B4513;
+            font-weight: bold;
+            margin-bottom: 3px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .brand-subtitle {
+            font-size: 0.85rem;
+            color: #D2691E;
+            font-weight: normal;
+        }
+        
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .app-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 18px 15px;
+            text-align: center;
+        }
+        
+        .app-header h1 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .app-header .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+        
+        .input-section {
+            padding: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 18px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+        
+        .input-with-unit {
+            position: relative;
+        }
+        
+        .input-with-unit input {
+            width: 100%;
+            padding: 14px 50px 14px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            transition: all 0.3s;
+            text-align: center;
+            background: #fafafa;
+        }
+        
+        .input-with-unit input:focus {
+            border-color: #8B4513;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+        }
+        
+        .unit {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        
+        /* قسم السعر */
+        .price-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px dashed #e0e0e0;
+        }
+        
+        .price-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .price-result {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+            border: 2px solid #e9ecef;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .price-row:last-child {
+            border-bottom: none;
+        }
+        
+        .price-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .price-value {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #8B4513;
+        }
+        
+        .total-price {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .total-price .price-label {
+            color: white;
+            font-size: 1.1rem;
+        }
+        
+        .total-price .price-value {
+            color: white;
+            font-size: 1.8rem;
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-calculate {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+        }
+        
+        .btn-calculate:hover {
+            background: linear-gradient(135deg, #D2691E 0%, #8B4513 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(139, 69, 19, 0.2);
+        }
+        
+        .btn-reset {
+            background: #f1f3f5;
+            color: #495057;
+            border: 2px solid #e9ecef;
+        }
+        
+        .btn-reset:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .results-section {
+            padding: 0 20px 20px;
+            display: none;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .result-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: transform 0.3s;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        .result-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .result-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .total-result {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+            grid-column: span 3;
+            padding: 22px;
+        }
+        
+        .total-result .result-value {
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .total-result .result-label {
+            color: rgba(255,255,255,0.95);
+        }
+        
+        .adjustment-notice {
+            background: #fff8e1;
+            border-right: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #856404;
+            display: none;
+            line-height: 1.5;
+        }
+        
+        .preview-section {
+            padding: 20px;
+            border-top: 2px solid #f0f0f0;
+            display: none;
+        }
+        
+        .preview-title {
+            font-size: 1.2rem;
+            margin-bottom: 18px;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 320px;
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            position: relative;
+        }
+        
+        #previewCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .canvas-info {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #2c3e50;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .btn-download {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+            width: 100%;
+            padding: 18px;
+            font-size: 1.15rem;
+            margin-top: 10px;
+        }
+        
+        .btn-download:hover {
+            background: linear-gradient(135deg, #D2691E 0%, #8B4513 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(139, 69, 19, 0.3);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* التذييل */
+        .designer-footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.8rem;
+            color: #8B4513;
+            border-top: 1px solid #eee;
+            font-style: italic;
+            background: #f9f9f9;
+        }
+        
+        /* تأثيرات إضافية */
+        .input-group:focus-within .input-label {
+            color: #8B4513;
+        }
+        
+        /* تصميم للجوال */
+        @media (max-width: 480px) {
+            .grid-inputs, .price-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .total-result {
+                grid-column: span 2;
+            }
+            
+            .main-title {
+                font-size: 1.5rem;
+            }
+            
+            .app-header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .input-with-unit input {
+                padding: 12px 50px 12px 15px;
+                font-size: 1rem;
+            }
+            
+            .canvas-container {
+                height: 280px;
+            }
+        }
+        
+        /* تأثيرات للتفاعل */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* تعليمات للمستخدم */
+        .instructions {
+            background: #e8f4fd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #0d6efd;
+            text-align: center;
+            border: 1px solid #b6d4fe;
+        }
+    </style>
+</head>
+<body>
+    <div class="brand-header">
+        <div class="main-title">عالم روائع الثريا</div>
+        <div class="brand-subtitle">أدوات دقيقة للتصميم والتركيب</div>
+    </div>
+    
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>جاري إنشاء المخطط الدقيق...</p>
+    </div>
+    
+    <div class="app-container">
+        <div class="app-header">
+            <h1>مخطط نقاط الثريا الدقيق</h1>
+            <p class="subtitle">للطباعة والتخريم في السقف - بدون كتابة</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="instructions">
+                <i class="fas fa-info-circle"></i> أدخل القيم واضغط على "احسب" أو اضغط Enter
+            </div>
+            
+            <div class="grid-inputs">
+                <div class="input-group">
+                    <label class="input-label">طول الثريا (سم)</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="length" min="10" max="500" step="0.1" placeholder="أدخل الطول">
+                        <span class="unit">سم</span>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">عرض الثريا (سم)</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="width" min="10" max="500" step="0.1" placeholder="أدخل العرض">
+                        <span class="unit">سم</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">المسافة بين النقاط (سم)</label>
+                <div class="input-with-unit">
+                    <input type="number" id="spacing" min="1" max="50" step="0.1" placeholder="أدخل المسافة">
+                    <span class="unit">سم</span>
+                </div>
+            </div>
+            
+            <!-- قسم السعر الجديد -->
+            <div class="price-section">
+                <div class="price-inputs">
+                    <div class="input-group">
+                        <label class="input-label">سعر القطعة (ريال)</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="piecePrice" min="0" step="0.1" placeholder="أدخل السعر">
+                            <span class="unit">ر.س</span>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">عدد القطع</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="pieceCount" min="0" step="1" placeholder="يظهر تلقائياً" readonly style="background-color: #f8f9fa;">
+                            <span class="unit">قطعة</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="price-result" id="priceResult">
+                    <div class="price-row">
+                        <span class="price-label">سعر القطعة:</span>
+                        <span class="price-value" id="pricePerPiece">0.00 ر.س</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">عدد القطع:</span>
+                        <span class="price-value" id="totalPieces">0</span>
+                    </div>
+                </div>
+                
+                <div class="total-price" id="totalPrice">
+                    <div class="price-row">
+                        <span class="price-label">السعر الإجمالي:</span>
+                        <span class="price-value" id="finalPrice">0.00 ر.س</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="adjustment-notice" id="adjustmentNotice">
+                <strong>ملاحظة:</strong> تم تعديل الأبعاد لتتناسب مع المسافة المحددة
+            </div>
+            
+            <div class="buttons">
+                <button class="btn-calculate" id="calculateBtn">
+                    <i class="fas fa-calculator"></i> احسب النقاط والسعر
+                </button>
+                <button class="btn-reset" id="resetBtn">
+                    <i class="fas fa-redo"></i> إعادة تعيين
+                </button>
+            </div>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <div class="results-grid" id="resultsGrid">
+                <!-- سيتم تعبئته بالجافاسكريبت -->
+            </div>
+        </div>
+        
+        <div class="preview-section" id="previewSection">
+            <h3 class="preview-title">معاينة المخطط</h3>
+            <div class="canvas-container">
+                <canvas id="previewCanvas"></canvas>
+                <div class="canvas-info" id="canvasInfo"></div>
+            </div>
+            <button class="btn-download" id="downloadBtn">
+                <i class="fas fa-download"></i> تحميل مخطط PDF دقيق
+            </button>
+        </div>
+        
+        <div class="designer-footer">
+            التصميم من قبل مراد
+        </div>
+    </div>
+
+    <!-- FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        // عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            // العناصر الرئيسية
+            const lengthInput = document.getElementById('length');
+            const widthInput = document.getElementById('width');
+            const spacingInput = document.getElementById('spacing');
+            const piecePriceInput = document.getElementById('piecePrice');
+            const pieceCountInput = document.getElementById('pieceCount');
+            const calculateBtn = document.getElementById('calculateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            const previewSection = document.getElementById('previewSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const adjustmentNotice = document.getElementById('adjustmentNotice');
+            const previewCanvas = document.getElementById('previewCanvas');
+            const canvasInfo = document.getElementById('canvasInfo');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const priceResult = document.getElementById('priceResult');
+            const totalPrice = document.getElementById('totalPrice');
+            const pricePerPieceElem = document.getElementById('pricePerPiece');
+            const totalPiecesElem = document.getElementById('totalPieces');
+            const finalPriceElem = document.getElementById('finalPrice');
+            
+            const ctx = previewCanvas.getContext('2d');
+            
+            // بيانات الحساب
+            let calculationData = null;
+            
+            // ضبط حجم الكانفاس
+            function resizeCanvas() {
+                const container = previewCanvas.parentElement;
+                previewCanvas.width = container.clientWidth;
+                previewCanvas.height = container.clientHeight;
+            }
+            
+            // عند الضغط على Enter في أي حقل
+            const inputs = [lengthInput, widthInput, spacingInput, piecePriceInput];
+            inputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        calculatePoints();
+                    }
+                });
+            });
+            
+            // عند التغيير في حقل سعر القطعة
+            piecePriceInput.addEventListener('input', function() {
+                if (calculationData) {
+                    updatePrice();
+                }
+            });
+            
+            // عند النقر على زر الحساب
+            calculateBtn.addEventListener('click', calculatePoints);
+            
+            // عند النقر على زر إعادة التعيين
+            resetBtn.addEventListener('click', function() {
+                // تفريغ جميع الحقول
+                lengthInput.value = '';
+                widthInput.value = '';
+                spacingInput.value = '';
+                piecePriceInput.value = '';
+                pieceCountInput.value = '';
+                
+                // إعادة النصوص الإرشادية
+                lengthInput.placeholder = 'أدخل الطول';
+                widthInput.placeholder = 'أدخل العرض';
+                spacingInput.placeholder = 'أدخل المسافة';
+                piecePriceInput.placeholder = 'أدخل السعر';
+                pieceCountInput.placeholder = 'يظهر تلقائياً';
+                
+                // إخفاء الأقسام
+                resultsSection.style.display = 'none';
+                previewSection.style.display = 'none';
+                adjustmentNotice.style.display = 'none';
+                priceResult.style.display = 'none';
+                totalPrice.style.display = 'none';
+                
+                // مسح البيانات
+                calculationData = null;
+                
+                // إعادة التركيز على أول حقل
+                lengthInput.focus();
+            });
+            
+            // عند النقر على زر التحميل
+            downloadBtn.addEventListener('click', generatePdf);
+            
+            // عند تغيير حجم النافذة
+            window.addEventListener('resize', function() {
+                resizeCanvas();
+                if (calculationData) {
+                    drawPreview();
+                }
+            });
+            
+            // دالة التحقق من الإدخال
+            function validateInputs() {
+                const length = parseFloat(lengthInput.value) || 0;
+                const width = parseFloat(widthInput.value) || 0;
+                const spacing = parseFloat(spacingInput.value) || 0;
+                
+                if (!length || !width || !spacing) {
+                    alert('يرجى ملء جميع الحقول المطلوبة: الطول، العرض، والمسافة');
+                    return false;
+                }
+                
+                if (length <= 0 || width <= 0 || spacing <= 0) {
+                    alert('يرجى إدخال أبعاد صحيحة (قيم أكبر من صفر)');
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            // دالة حساب النقاط
+            function calculatePoints() {
+                // التحقق من صحة الإدخال
+                if (!validateInputs()) {
+                    return;
+                }
+                
+                // الحصول على القيم المدخلة
+                let length = parseFloat(lengthInput.value);
+                let width = parseFloat(widthInput.value);
+                let spacing = parseFloat(spacingInput.value);
+                let price = parseFloat(piecePriceInput.value) || 0;
+                
+                // حفظ القيم الأصلية
+                const originalLength = length;
+                const originalWidth = width;
+                
+                // تعديل الأبعاد لتتناسب مع المسافة
+                let adjustedLength = Math.floor(length / spacing) * spacing;
+                let adjustedWidth = Math.floor(width / spacing) * spacing;
+                
+                // حساب عدد النقاط
+                let pointsInLength = Math.floor(adjustedLength / spacing) + 1;
+                let pointsInWidth = Math.floor(adjustedWidth / spacing) + 1;
+                let totalPoints = pointsInLength * pointsInWidth;
+                
+                // حفظ بيانات الحساب
+                calculationData = {
+                    originalLength,
+                    originalWidth,
+                    adjustedLength,
+                    adjustedWidth,
+                    spacing,
+                    pointsInLength,
+                    pointsInWidth,
+                    totalPoints,
+                    price
+                };
+                
+                // تحديث حقل عدد القطع
+                pieceCountInput.value = totalPoints;
+                
+                // عرض النتائج
+                displayResults();
+                
+                // تحديث السعر إذا تم إدخاله
+                if (price > 0) {
+                    updatePrice();
+                }
+                
+                // إظهار الأقسام
+                resultsSection.style.display = 'block';
+                previewSection.style.display = 'block';
+                
+                // إظهار ملاحظة التعديل إذا لزم الأمر
+                if (adjustedLength !== originalLength || adjustedWidth !== originalWidth) {
+                    adjustmentNotice.style.display = 'block';
+                } else {
+                    adjustmentNotice.style.display = 'none';
+                }
+                
+                // رسم المعاينة
+                resizeCanvas();
+                drawPreview();
+                
+                // التمرير إلى المعاينة
+                previewSection.scrollIntoView({ behavior: 'smooth' });
+                
+                // إذا كان حقل السعر فارغاً، نضع التركيز عليه
+                if (!price) {
+                    piecePriceInput.focus();
+                }
+            }
+            
+            // دالة تحديث السعر
+            function updatePrice() {
+                if (!calculationData) return;
+                
+                const price = parseFloat(piecePriceInput.value) || 0;
+                calculationData.price = price;
+                
+                if (price > 0) {
+                    const totalPriceValue = price * calculationData.totalPoints;
+                    
+                    // تحديث العناصر
+                    pricePerPieceElem.textContent = price.toFixed(2) + ' ر.س';
+                    totalPiecesElem.textContent = calculationData.totalPoints;
+                    finalPriceElem.textContent = totalPriceValue.toFixed(2) + ' ر.س';
+                    
+                    // إظهار النتائج مع تأثير
+                    priceResult.style.display = 'block';
+                    totalPrice.style.display = 'block';
+                    
+                    // إضافة تأثير ظهور
+                    priceResult.classList.add('fade-in');
+                    totalPrice.classList.add('fade-in');
+                    
+                    // إزالة الفئة بعد الانتهاء من الأنيميشن
+                    setTimeout(() => {
+                        priceResult.classList.remove('fade-in');
+                        totalPrice.classList.remove('fade-in');
+                    }, 500);
+                } else {
+                    // إخفاء النتائج إذا كان السعر صفر
+                    priceResult.style.display = 'none';
+                    totalPrice.style.display = 'none';
+                }
+            }
+            
+            // دالة عرض النتائج
+            function displayResults() {
+                if (!calculationData) return;
+                
+                const d = calculationData;
+                
+                resultsGrid.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-value">${d.pointsInLength}</div>
+                        <div class="result-label">نقاط في الطول</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-value">${d.pointsInWidth}</div>
+                        <div class="result-label">نقاط في العرض</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-value">${d.adjustedLength.toFixed(1)}</div>
+                        <div class="result-label">الطول المعدل (سم)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-value">${d.adjustedWidth.toFixed(1)}</div>
+                        <div class="result-label">العرض المعدل (سم)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-value">${d.spacing}</div>
+                        <div class="result-label">المسافة بين النقاط (سم)</div>
+                    </div>
+                    <div class="result-item total-result">
+                        <div class="result-value">${d.totalPoints}</div>
+                        <div class="result-label">إجمالي عدد النقاط</div>
+                    </div>
+                `;
+                
+                // إضافة تأثير ظهور
+                resultsGrid.classList.add('fade-in');
+                setTimeout(() => {
+                    resultsGrid.classList.remove('fade-in');
+                }, 500);
+            }
+            
+            // دالة رسم المعاينة
+            function drawPreview() {
+                if (!calculationData) return;
+                
+                const d = calculationData;
+                const canvas = previewCanvas;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // حساب الهوامش
+                const margin = 40;
+                const drawWidth = canvas.width - 2 * margin;
+                const drawHeight = canvas.height - 2 * margin;
+                
+                // حساب مقياس الرسم
+                const scaleX = drawWidth / d.adjustedLength;
+                const scaleY = drawHeight / d.adjustedWidth;
+                const scale = Math.min(scaleX, scaleY) * 0.9;
+                
+                // مركز الرسم
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                // رسم مستطيل الحدود
+                const rectWidth = d.adjustedLength * scale;
+                const rectHeight = d.adjustedWidth * scale;
+                
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 3]);
+                ctx.strokeRect(
+                    centerX - rectWidth / 2,
+                    centerY - rectHeight / 2,
+                    rectWidth,
+                    rectHeight
+                );
+                ctx.setLineDash([]);
+                
+                // حساب المسافات بين النقاط بالمقياس
+                const scaledSpacing = d.spacing * scale;
+                
+                // رسم النقاط
+                ctx.fillStyle = '#D2691E';
+                
+                for (let i = 0; i < d.pointsInLength; i++) {
+                    for (let j = 0; j < d.pointsInWidth; j++) {
+                        const x = centerX - rectWidth / 2 + i * scaledSpacing;
+                        const y = centerY - rectHeight / 2 + j * scaledSpacing;
+                        
+                        // رسم نقطة
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // رسم علامة صليب صغيرة بداخل النقطة (للطباعة الدقيقة)
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x - 3, y);
+                        ctx.lineTo(x + 3, y);
+                        ctx.moveTo(x, y - 3);
+                        ctx.lineTo(x, y + 3);
+                        ctx.stroke();
+                    }
+                }
+                
+                // تحديث معلومات الكانفاس
+                canvasInfo.innerHTML = `
+                    ${d.pointsInLength} × ${d.pointsInWidth} نقطة<br>
+                    ${d.adjustedLength} × ${d.adjustedWidth} سم
+                `;
+            }
+            
+            // دالة إنشاء ملف PDF دقيق
+            function generatePdf() {
+                if (!calculationData) {
+                    alert('يرجى إجراء الحساب أولاً');
+                    return;
+                }
+                
+                // إظهار رسالة التحميل
+                loadingOverlay.style.display = 'flex';
+                
+                // تأخير بسيط لرؤية رسالة التحميل
+                setTimeout(() => {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({
+                            orientation: 'portrait',
+                            unit: 'mm',
+                            format: 'a4'
+                        });
+                        
+                        const d = calculationData;
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        const pageHeight = doc.internal.pageSize.getHeight();
+                        
+                        // لا نضيف أي نصوص أو كتابات على الإطلاق
+                        // فقط نقاط دقيقة
+                        
+                        // حساب الهوامش في ملف PDF
+                        const pdfMargin = 20; // 20mm من كل جانب
+                        const drawableWidth = pageWidth - 2 * pdfMargin;
+                        const drawableHeight = pageHeight - 2 * pdfMargin;
+                        
+                        // حساب المقياس للرسم
+                        const pdfScaleX = drawableWidth / d.adjustedLength;
+                        const pdfScaleY = drawableHeight / d.adjustedWidth;
+                        const pdfScale = Math.min(pdfScaleX, pdfScaleY) * 0.95; // 95% من المساحة المتاحة
+                        
+                        // مركز الصفحة
+                        const centerX = pageWidth / 2;
+                        const centerY = pageHeight / 2;
+                        
+                        // حساب أبعاد الرسم النهائية
+                        const finalWidth = d.adjustedLength * pdfScale;
+                        const finalHeight = d.adjustedWidth * pdfScale;
+                        
+                        // رسم حدود الثريا (اختياري، يمكن حذفها إذا أردت فقط النقاط)
+                        doc.setDrawColor(150, 150, 150);
+                        doc.setLineWidth(0.2);
+                        doc.rect(
+                            centerX - finalWidth / 2,
+                            centerY - finalHeight / 2,
+                            finalWidth,
+                            finalHeight
+                        );
+                        
+                        // حساب المسافات بين النقاط في المقياس النهائي
+                        const finalSpacing = d.spacing * pdfScale;
+                        
+                        // رسم النقاط الدقيقة
+                        for (let i = 0; i < d.pointsInLength; i++) {
+                            for (let j = 0; j < d.pointsInWidth; j++) {
+                                const x = centerX - finalWidth / 2 + i * finalSpacing;
+                                const y = centerY - finalHeight / 2 + j * finalSpacing;
+                                
+                                // رسم نقطة دقيقة (دائرة صغيرة)
+                                doc.setFillColor(0, 0, 0); // أسود خالص
+                                doc.circle(x, y, 0.8, 'F');
+                                
+                                // رسم علامة صليب صغيرة داخل النقطة للدقة (قطر 1.2 ملم)
+                                doc.setDrawColor(0, 0, 0);
+                                doc.setLineWidth(0.1);
+                                doc.line(x - 0.6, y, x + 0.6, y);
+                                doc.line(x, y - 0.6, x, y + 0.6);
+                            }
+                        }
+                        
+                        // حفظ الملف باسم يتضمن المعلومات
+                        const fileName = `مخطط_نقاط_${d.adjustedLength}x${d.adjustedWidth}_سم_${d.totalPoints}_نقطة.pdf`;
+                        doc.save(fileName);
+                        
+                    } catch (error) {
+                        console.error('خطأ في إنشاء PDF:', error);
+                        alert('حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.');
+                    } finally {
+                        // إخفاء رسالة التحميل
+                        loadingOverlay.style.display = 'none';
+                    }
+                }, 500);
+            }
+            
+            // إضافة مثال توضيحي عند النقر على الحقول
+            lengthInput.addEventListener('focus', function() {
+                this.placeholder = 'مثال: 120 سم';
+            });
+            
+            lengthInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    this.placeholder = 'أدخل الطول';
+                }
+            });
+            
+            widthInput.addEventListener('focus', function() {
+                this.placeholder = 'مثال: 60 سم';
+            });
+            
+            widthInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    this.placeholder = 'أدخل العرض';
+                }
+            });
+            
+            spacingInput.addEventListener('focus', function() {
+                this.placeholder = 'مثال: 10 سم';
+            });
+            
+            spacingInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    this.placeholder = 'أدخل المسافة';
+                }
+            });
+            
+            piecePriceInput.addEventListener('focus', function() {
+                this.placeholder = 'مثال: 5 ريال';
+            });
+            
+            piecePriceInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    this.placeholder = 'أدخل السعر';
+                }
+            });
+            
+            // التركيز التلقائي على حقل الطول عند تحميل الصفحة
+            lengthInput.focus();
+        });
+    </script>
+</body>
+</html>
