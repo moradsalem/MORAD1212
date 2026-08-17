@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تطبيق التقاط السقف التلقائي - WebAR</title>
+  <title>تطبيق AR القياس المباشر</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
       font-family: system-ui, -apple-system, sans-serif;
-      background-color: #000;
+      background-color: #111;
       color: #fff;
     }
     #ui-overlay {
@@ -18,107 +18,81 @@
       left: 16px;
       right: 16px;
       z-index: 10;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      pointer-events: none;
     }
-    .info-card {
-      background: rgba(0, 0, 0, 0.8);
+    .card {
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 14px;
-      padding: 14px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 14px;
       font-size: 14px;
-      line-height: 1.6;
-      pointer-events: auto;
+      margin-bottom: 10px;
     }
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: #e67e22;
+    #error-box {
+      display: none;
+      background: rgba(255, 59, 48, 0.9);
       color: #fff;
-      font-size: 12px;
-      font-weight: bold;
-      margin-bottom: 6px;
+      border: none;
     }
-    .status-badge.detected {
-      background: #2ecc71;
-    }
-    #log-list {
-      max-height: 120px;
-      overflow-y: auto;
-      margin-top: 8px;
-      padding-right: 0;
-      list-style: none;
-      font-size: 13px;
-    }
-    #log-list li {
-      background: rgba(255, 255, 255, 0.1);
-      margin-bottom: 4px;
-      padding: 6px 10px;
-      border-radius: 6px;
-    }
-    .controls-panel {
+    .btn-container {
       position: absolute;
-      bottom: 24px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
       z-index: 10;
+      width: 90%;
+      max-width: 300px;
     }
     .btn {
-      padding: 12px 24px;
+      width: 100%;
+      padding: 16px;
       border: none;
       border-radius: 30px;
       font-weight: bold;
-      font-size: 15px;
+      font-size: 16px;
+      background: #007aff;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .btn-primary { background: #007aff; color: #fff; }
-    .btn-success { background: #34c759; color: #fff; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
   <div id="ui-overlay">
-    <div class="info-card">
-      <div id="status-tag" class="status-badge">جاري البحث عن السقف...</div>
-      <div id="dimensions-text">قم بتوجيه الجوال نحو السقف ورفعه بثبات.</div>
-    </div>
-
-    <!-- قائمة القياسات المسجلة -->
-    <div class="info-card" id="records-card" style="display: none;">
-      <strong>القياسات المسجلة:</strong>
-      <ul id="log-list"></ul>
+    <div id="error-box" class="card"></div>
+    <div id="status-card" class="card">
+      <strong>حالة النظام:</strong> <span id="status-text">جاهز لبدء التشغيل</span>
     </div>
   </div>
 
-  <div class="controls-panel">
-    <button id="ar-button" class="btn btn-primary">تشغيل الكاميرا (AR)</button>
-    <button id="save-button" class="btn btn-success" style="display: none;">تسجيل القياس الحالي</button>
+  <div class="btn-container">
+    <button id="start-ar-btn" class="btn">فتح الكاميرا والبدء (AR)</button>
   </div>
 
   <script>
-    let camera, scene, renderer;
-    let xrRefSpace, hitTestSource = null;
+    let camera, scene, renderer, hitTestSource, xrRefSpace;
     let reticle, rectGroup;
-    let isSurfaceDetected = false;
-    let currentDimensions = { width: 1.2, height: 0.6 }; // المقاس الافتراضي
-    let savedLogs = [];
 
-    init();
+    // 1. فحص متطلبات الأمان والبروتوكول فور فتح الصفحة
+    window.addEventListener('DOMContentLoaded', () => {
+      const errorBox = document.getElementById('error-box');
+      
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        errorBox.style.display = 'block';
+        errorBox.innerHTML = '⚠️ <strong>تنبيه أمان:</strong> يجب فتح الموقع عبر رابط آمن <strong>HTTPS</strong> لتتمكن الكاميرا من العمل.';
+      } else if (!navigator.xr) {
+        errorBox.style.display = 'block';
+        errorBox.innerHTML = '⚠️ <strong>المتصفح غير مدعوم:</strong><br>• للأندرويد: يرجى فتح الرابط في Google Chrome.<br>• للآيفون: يرجى فتح الرابط عبر تطبيق WebXR Viewer.';
+      }
+    });
 
     function init() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      light.position.set(0.5, 1, 0.25);
       scene.add(light);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -129,109 +103,59 @@
 
       // مؤشر نقطة السنتر
       reticle = new THREE.Mesh(
-        new THREE.RingGeometry(0.05, 0.07, 32).rotateX(-Math.PI / 2),
+        new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ color: 0x00ff00 })
       );
       reticle.matrixAutoUpdate = false;
       reticle.visible = false;
       scene.add(reticle);
 
-      // مجموعة مجسم المستطيل + علامة السنتر
+      // مجسم المستطيل 120x60 سم
       rectGroup = new THREE.Group();
-      createRectangleMesh(currentDimensions.width, currentDimensions.height);
+      const geom = new THREE.PlaneGeometry(1.2, 0.6);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x007aff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      const mesh = new THREE.Mesh(geom, mat);
+      
+      const centerDot = new THREE.Mesh(new THREE.SphereGeometry(0.03), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+      rectGroup.add(mesh);
+      rectGroup.add(centerDot);
+      rectGroup.rotation.x = Math.PI / 2;
       rectGroup.visible = false;
       scene.add(rectGroup);
 
-      document.getElementById('ar-button').addEventListener('click', onARButtonClick);
-      document.getElementById('save-button').addEventListener('click', saveMeasurement);
-      window.addEventListener('resize', onWindowResize);
+      document.getElementById('start-ar-btn').addEventListener('click', startAR);
     }
 
-    function createRectangleMesh(w, h) {
-      // تنظيف المجسم السابق إن وجد
-      while(rectGroup.children.length > 0){ 
-        rectGroup.remove(rectGroup.children[0]); 
+    async function startAR() {
+      const statusText = document.getElementById('status-text');
+      const errorBox = document.getElementById('error-box');
+
+      try {
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test']
+        });
+
+        renderer.xr.setSession(session);
+        document.getElementById('start-ar-btn').style.display = 'none';
+        statusText.textContent = 'الكاميرا تعمل. وجّه الجوال نحو السقف ببطء...';
+
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+        xrRefSpace = await session.requestReferenceSpace('local');
+
+        renderer.setAnimationLoop(render);
+
+      } catch (err) {
+        errorBox.style.display = 'block';
+        errorBox.innerHTML = '❌ <strong>فشل تشغيل الكاميرا:</strong> ' + err.message + '<br>تأكد من إعطاء إذن استخدام الكاميرا للمتصفح.';
       }
-
-      // 1. رسم المستطيل المقترح (120*60 سم)
-      const geometry = new THREE.PlaneGeometry(w, h);
-      const material = new THREE.MeshBasicMaterial({
-        color: 0x007aff,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.45
-      });
-      const plane = new THREE.Mesh(geometry, material);
-
-      // إطار المستطيل
-      const edges = new THREE.EdgesGeometry(geometry);
-      const wireframe = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
-      plane.add(wireframe);
-
-      // 2. وضع نقطة مرجعية بارزة في السنتر Exact Center
-      const centerMarker = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025, 16, 16),
-        new THREE.MeshBasicMaterial({ color: 0xff3b30 })
-      );
-      
-      rectGroup.add(plane);
-      rectGroup.add(centerMarker);
-      rectGroup.rotation.x = Math.PI / 2; // توجيه أفقي ليناسب السقف
-    }
-
-    async function onARButtonClick() {
-      if (!navigator.xr) {
-        alert('المتصفح لا يدعم WebXR. يرجى تجربة Chrome على Android.');
-        return;
-      }
-
-      const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test']
-      });
-
-      renderer.xr.setSession(session);
-      document.getElementById('ar-button').style.display = 'none';
-      document.getElementById('save-button').style.display = 'block';
-
-      const viewerSpace = await session.requestReferenceSpace('viewer');
-      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-      xrRefSpace = await session.requestReferenceSpace('local');
-
-      renderer.setAnimationLoop(render);
-    }
-
-    function saveMeasurement() {
-      if (!isSurfaceDetected) return;
-
-      const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-      const recordText = `مقاس: ${currentDimensions.width * 100}×${currentDimensions.height * 100} سم | السنتر مسبّت | ${timeStr}`;
-      
-      savedLogs.push(recordText);
-      
-      // تحديث الواجهة
-      const logList = document.getElementById('log-list');
-      const li = document.createElement('li');
-      li.textContent = recordText;
-      logList.appendChild(li);
-
-      document.getElementById('records-card').style.display = 'block';
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     function render(timestamp, frame) {
       if (frame) {
         const hitTestResults = frame.getHitTestResults(hitTestSource);
-
         if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(xrRefSpace);
-
-          // تحديث مكان ومصفوفة الثبات عند التقاط السقف تلقائياً
+          const pose = hitTestResults[0].getPose(xrRefSpace);
           reticle.visible = true;
           reticle.matrix.fromArray(pose.transform.matrix);
 
@@ -239,24 +163,13 @@
           rectGroup.position.setFromMatrixPosition(reticle.matrix);
           rectGroup.quaternion.setFromRotationMatrix(reticle.matrix);
 
-          if (!isSurfaceDetected) {
-            isSurfaceDetected = true;
-            const statusTag = document.getElementById('status-tag');
-            statusTag.textContent = 'تم الالتقاط والتثبيت تلقائياً!';
-            statusTag.classList.add('detected');
-
-            document.getElementById('dimensions-text').innerHTML = `
-              <strong>تم تحديد سنتر السقف</strong><br>
-              المستطيل المحدث: 120 × 60 سم (مثبت في الموقع)
-            `;
-          }
-        } else {
-          reticle.visible = false;
+          document.getElementById('status-text').textContent = 'تم تحديد السقف والسنتر بنجاح!';
         }
       }
-
       renderer.render(scene, camera);
     }
+
+    init();
   </script>
 </body>
 </html>
