@@ -2,174 +2,174 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تطبيق AR القياس المباشر</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>تحديد السقف والسنتر - Safari AR</title>
   <style>
-    body {
+    body, html {
       margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      background: #000;
       font-family: system-ui, -apple-system, sans-serif;
-      background-color: #111;
-      color: #fff;
     }
-    #ui-overlay {
+    /* تغذية الكاميرا المباشرة */
+    #webcam {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      right: 16px;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+    /* طبقة رسم عناصر الـ 3D فوق الكاميرا */
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+    #ui {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
       z-index: 10;
     }
     .card {
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      padding: 14px;
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-    #error-box {
-      display: none;
-      background: rgba(255, 59, 48, 0.9);
       color: #fff;
-      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    .btn-container {
+    #btn-container {
       position: absolute;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 10;
-      width: 90%;
-      max-width: 300px;
+      width: 80%;
     }
     .btn {
       width: 100%;
       padding: 16px;
-      border: none;
-      border-radius: 30px;
-      font-weight: bold;
-      font-size: 16px;
       background: #007aff;
       color: #fff;
+      border: none;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: bold;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      cursor: pointer;
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <div id="ui-overlay">
-    <div id="error-box" class="card"></div>
-    <div id="status-card" class="card">
-      <strong>حالة النظام:</strong> <span id="status-text">جاهز لبدء التشغيل</span>
-    </div>
+  <!-- كاميرا الهاتف المباشرة -->
+  <video id="webcam" autoplay playsinline muted></video>
+  
+  <!-- كانفاس الرسم 3D -->
+  <div id="canvas-container"></div>
+
+  <div id="ui">
+    <div class="card" id="info">اضغط على "تشغيل الكاميرا" للبدء</div>
   </div>
 
-  <div class="btn-container">
-    <button id="start-ar-btn" class="btn">فتح الكاميرا والبدء (AR)</button>
+  <div id="btn-container">
+    <button class="btn" id="start-btn" onclick="initCamera()">تشغيل الكاميرا ورسم السقف</button>
   </div>
 
   <script>
-    let camera, scene, renderer, hitTestSource, xrRefSpace;
-    let reticle, rectGroup;
+    let scene, camera, renderer, rectGroup;
 
-    // 1. فحص متطلبات الأمان والبروتوكول فور فتح الصفحة
-    window.addEventListener('DOMContentLoaded', () => {
-      const errorBox = document.getElementById('error-box');
-      
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        errorBox.style.display = 'block';
-        errorBox.innerHTML = '⚠️ <strong>تنبيه أمان:</strong> يجب فتح الموقع عبر رابط آمن <strong>HTTPS</strong> لتتمكن الكاميرا من العمل.';
-      } else if (!navigator.xr) {
-        errorBox.style.display = 'block';
-        errorBox.innerHTML = '⚠️ <strong>المتصفح غير مدعوم:</strong><br>• للأندرويد: يرجى فتح الرابط في Google Chrome.<br>• للآيفون: يرجى فتح الرابط عبر تطبيق WebXR Viewer.';
-      }
-    });
-
-    function init() {
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      scene.add(light);
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      document.body.appendChild(renderer.domElement);
-
-      // مؤشر نقطة السنتر
-      reticle = new THREE.Mesh(
-        new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-      );
-      reticle.matrixAutoUpdate = false;
-      reticle.visible = false;
-      scene.add(reticle);
-
-      // مجسم المستطيل 120x60 سم
-      rectGroup = new THREE.Group();
-      const geom = new THREE.PlaneGeometry(1.2, 0.6);
-      const mat = new THREE.MeshBasicMaterial({ color: 0x007aff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
-      const mesh = new THREE.Mesh(geom, mat);
-      
-      const centerDot = new THREE.Mesh(new THREE.SphereGeometry(0.03), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-      rectGroup.add(mesh);
-      rectGroup.add(centerDot);
-      rectGroup.rotation.x = Math.PI / 2;
-      rectGroup.visible = false;
-      scene.add(rectGroup);
-
-      document.getElementById('start-ar-btn').addEventListener('click', startAR);
-    }
-
-    async function startAR() {
-      const statusText = document.getElementById('status-text');
-      const errorBox = document.getElementById('error-box');
+    async function initCamera() {
+      const video = document.getElementById('webcam');
+      const info = document.getElementById('info');
+      const startBtn = document.getElementById('start-btn');
 
       try {
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test']
+        // طلب وصول مباشر لكاميرا الآيفون الخلفية
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } },
+          audio: false
         });
+        
+        video.srcObject = stream;
+        startBtn.style.display = 'none';
+        info.innerHTML = '<strong>تم تشغيل الكاميرا!</strong><br>تم تثبيت مستطيل 120×60 سم مع تحديد السنتر الأحمر في منتصف الشاشة.';
 
-        renderer.xr.setSession(session);
-        document.getElementById('start-ar-btn').style.display = 'none';
-        statusText.textContent = 'الكاميرا تعمل. وجّه الجوال نحو السقف ببطء...';
-
-        const viewerSpace = await session.requestReferenceSpace('viewer');
-        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-        xrRefSpace = await session.requestReferenceSpace('local');
-
-        renderer.setAnimationLoop(render);
-
+        initThreeJS();
       } catch (err) {
-        errorBox.style.display = 'block';
-        errorBox.innerHTML = '❌ <strong>فشل تشغيل الكاميرا:</strong> ' + err.message + '<br>تأكد من إعطاء إذن استخدام الكاميرا للمتصفح.';
+        // في حال عدم وجود كاميرا خلفية بدعم exact، نطلب الكاميرا العامة
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          video.srcObject = stream;
+          startBtn.style.display = 'none';
+          initThreeJS();
+        } catch (e) {
+          alert('تعذر فتح الكاميرا، يرجى السماح بصلحية الكاميرا من إعدادات Safari.');
+        }
       }
     }
 
-    function render(timestamp, frame) {
-      if (frame) {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-        if (hitTestResults.length > 0) {
-          const pose = hitTestResults[0].getPose(xrRefSpace);
-          reticle.visible = true;
-          reticle.matrix.fromArray(pose.transform.matrix);
+    function initThreeJS() {
+      const container = document.getElementById('canvas-container');
+      
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 2;
 
-          rectGroup.visible = true;
-          rectGroup.position.setFromMatrixPosition(reticle.matrix);
-          rectGroup.quaternion.setFromRotationMatrix(reticle.matrix);
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
 
-          document.getElementById('status-text').textContent = 'تم تحديد السقف والسنتر بنجاح!';
-        }
-      }
+      // إنشاء إطار ومستطيل السقف 120*60 سم (مثبت بالمشهد)
+      rectGroup = new THREE.Group();
+
+      const geometry = new THREE.PlaneGeometry(1.2, 0.6);
+      const material = new THREE.MeshBasicMaterial({ color: 0x007aff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      const plane = new THREE.Mesh(geometry, material);
+
+      const edges = new THREE.EdgesGeometry(geometry);
+      const wireframe = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
+      plane.add(wireframe);
+
+      // تحديد السنتر بكرة حمراء بارزة
+      const centerMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff3b30 })
+      );
+
+      rectGroup.add(plane);
+      rectGroup.add(centerMarker);
+      scene.add(rectGroup);
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
       renderer.render(scene, camera);
     }
 
-    init();
+    window.addEventListener('resize', () => {
+      if (camera && renderer) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
   </script>
 </body>
 </html>
