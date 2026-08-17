@@ -2,174 +2,140 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>تحديد السقف والسنتر - Safari AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدخال وأخذ المستندات PDF</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
+    body {
       font-family: system-ui, -apple-system, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    /* تغذية الكاميرا المباشرة */
-    #webcam {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .container {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
+      max-width: 500px;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
     }
-    /* طبقة رسم عناصر الـ 3D فوق الكاميرا */
-    #canvas-container {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-      pointer-events: none;
-    }
-    #ui {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      right: 20px;
-      z-index: 10;
-    }
-    .card {
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(10px);
-      color: #fff;
-      padding: 14px;
+    h2 { text-align: center; color: #38bdf8; margin-top: 0; }
+    .upload-zone {
+      border: 2px dashed #475569;
       border-radius: 12px;
-      font-size: 14px;
+      padding: 30px 20px;
       text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #0f172a;
+      cursor: pointer;
+      margin-bottom: 15px;
     }
-    #btn-container {
-      position: absolute;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      width: 80%;
-    }
+    .upload-zone:hover { border-color: #38bdf8; }
+    input[type="file"] { display: none; }
     .btn {
       width: 100%;
-      padding: 16px;
-      background: #007aff;
-      color: #fff;
+      padding: 14px;
+      margin-top: 10px;
       border: none;
-      border-radius: 30px;
-      font-size: 16px;
+      border-radius: 10px;
       font-weight: bold;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-camera { background: #0284c7; color: #fff; }
+    .btn-file { background: #334155; color: #fff; }
+    #preview-container {
+      margin-top: 20px;
+      display: none;
+      text-align: center;
+    }
+    iframe, img {
+      width: 100%;
+      height: 350px;
+      border-radius: 8px;
+      border: 1px solid #475569;
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- مكتبة تحويل الصور إلى PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
-  <!-- كاميرا الهاتف المباشرة -->
-  <video id="webcam" autoplay playsinline muted></video>
-  
-  <!-- كانفاس الرسم 3D -->
-  <div id="canvas-container"></div>
+<div class="container">
+  <h2>إدخال المستندات (PDF)</h2>
 
-  <div id="ui">
-    <div class="card" id="info">اضغط على "تشغيل الكاميرا" للبدء</div>
+  <!-- خيار رفع ملف PDF جاهز -->
+  <label for="pdf-input" class="upload-zone">
+    <div>📄 اضغط هنا لاختيار ملف PDF من الجهاز</div>
+  </label>
+  <input type="file" id="pdf-input" accept="application/pdf">
+
+  <div style="text-align:center; margin: 10px 0; color: #64748b;">أو</div>
+
+  <!-- خيار التقاط مستند بالكاميرا وتحويله لـ PDF -->
+  <label for="camera-input">
+    <div class="btn btn-camera" style="text-align:center;">📷 تصوير مستند بالكاميرا تحويله لـ PDF</div>
+  </label>
+  <input type="file" id="camera-input" accept="image/*" capture="environment">
+
+  <!-- منطقة معاينة المستند -->
+  <div id="preview-container">
+    <h3 style="color:#cbd5e1; font-size:14px;">معاينة المستند المرفوع:</h3>
+    <div id="preview-content"></div>
   </div>
+</div>
 
-  <div id="btn-container">
-    <button class="btn" id="start-btn" onclick="initCamera()">تشغيل الكاميرا ورسم السقف</button>
-  </div>
+<script>
+  const pdfInput = document.getElementById('pdf-input');
+  const cameraInput = document.getElementById('camera-input');
+  const previewContainer = document.getElementById('preview-container');
+  const previewContent = document.getElementById('preview-content');
 
-  <script>
-    let scene, camera, renderer, rectGroup;
+  // 1. عند اختيار ملف PDF مباشر
+  pdfInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && file.type === "application/pdf") {
+      const fileURL = URL.createObjectURL(file);
+      previewContent.innerHTML = `<iframe src="${fileURL}"></iframe>`;
+      previewContainer.style.display = 'block';
+    }
+  });
 
-    async function initCamera() {
-      const video = document.getElementById('webcam');
-      const info = document.getElementById('info');
-      const startBtn = document.getElementById('start-btn');
-
-      try {
-        // طلب وصول مباشر لكاميرا الآيفون الخلفية
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" } },
-          audio: false
-        });
+  // 2. عند تصوير مستند بالكاميرا وتحويله تلقائياً لـ PDF
+  cameraInput.addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const imgData = event.target.result;
         
-        video.srcObject = stream;
-        startBtn.style.display = 'none';
-        info.innerHTML = '<strong>تم تشغيل الكاميرا!</strong><br>تم تثبيت مستطيل 120×60 سم مع تحديد السنتر الأحمر في منتصف الشاشة.';
+        // إنشاء ملف PDF جديد
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const img = new Image();
+        img.src = imgData;
+        img.onload = function() {
+          // ضبط مقاسات الصورة على صفحة A4
+          pdf.addImage(img, 'JPEG', 10, 10, 190, 270);
+          const pdfBlob = pdf.output('blob');
+          const pdfURL = URL.createObjectURL(pdfBlob);
 
-        initThreeJS();
-      } catch (err) {
-        // في حال عدم وجود كاميرا خلفية بدعم exact، نطلب الكاميرا العامة
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-          video.srcObject = stream;
-          startBtn.style.display = 'none';
-          initThreeJS();
-        } catch (e) {
-          alert('تعذر فتح الكاميرا، يرجى السماح بصلحية الكاميرا من إعدادات Safari.');
-        }
-      }
+          previewContent.innerHTML = `
+            <iframe src="${pdfURL}"></iframe>
+            <p style="color:#22c55e; font-size:13px; margin-top:8px;">✅ تم تحويل الصورة إلى مستند PDF بنجاح!</p>
+          `;
+          previewContainer.style.display = 'block';
+        };
+      };
+      reader.readAsDataURL(file);
     }
+  });
+</script>
 
-    function initThreeJS() {
-      const container = document.getElementById('canvas-container');
-      
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 2;
-
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      container.appendChild(renderer.domElement);
-
-      // إنشاء إطار ومستطيل السقف 120*60 سم (مثبت بالمشهد)
-      rectGroup = new THREE.Group();
-
-      const geometry = new THREE.PlaneGeometry(1.2, 0.6);
-      const material = new THREE.MeshBasicMaterial({ color: 0x007aff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
-      const plane = new THREE.Mesh(geometry, material);
-
-      const edges = new THREE.EdgesGeometry(geometry);
-      const wireframe = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
-      plane.add(wireframe);
-
-      // تحديد السنتر بكرة حمراء بارزة
-      const centerMarker = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 16, 16),
-        new THREE.MeshBasicMaterial({ color: 0xff3b30 })
-      );
-
-      rectGroup.add(plane);
-      rectGroup.add(centerMarker);
-      scene.add(rectGroup);
-
-      animate();
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    }
-
-    window.addEventListener('resize', () => {
-      if (camera && renderer) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      }
-    });
-  </script>
 </body>
 </html>
