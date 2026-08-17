@@ -3,139 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام إدخال وأخذ المستندات PDF</title>
+  <title>قارئ الباركود</title>
+  <!-- مكتبة قراءة الباركود -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background-color: #0f172a;
-      color: #f8fafc;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      padding: 30px;
+      text-align: center;
+      background-color: #f4f4f9;
     }
+
+    /* تنسيق المدخلات والأزرار */
     .container {
-      width: 100%;
-      max-width: 500px;
-      background: #1e293b;
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
       padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      border: 1px solid #334155;
-    }
-    h2 { text-align: center; color: #38bdf8; margin-top: 0; }
-    .upload-zone {
-      border: 2px dashed #475569;
       border-radius: 12px;
-      padding: 30px 20px;
-      text-align: center;
-      background: #0f172a;
-      cursor: pointer;
-      margin-bottom: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    .upload-zone:hover { border-color: #38bdf8; }
-    input[type="file"] { display: none; }
-    .btn {
-      width: 100%;
-      padding: 14px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 10px;
-      font-weight: bold;
-      font-size: 15px;
-      cursor: pointer;
-    }
-    .btn-camera { background: #0284c7; color: #fff; }
-    .btn-file { background: #334155; color: #fff; }
-    #preview-container {
-      margin-top: 20px;
-      display: none;
-      text-align: center;
-    }
-    iframe, img {
-      width: 100%;
-      height: 350px;
+
+    input[type="text"] {
+      width: 90%;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 16px;
+      border: 2px solid #ddd;
       border-radius: 8px;
-      border: 1px solid #475569;
+      text-align: center;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    /* نافذة الكاميرا المنبثقة (Modal) */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      position: relative;
+    }
+
+    #reader {
+      width: 100%;
+    }
+
+    .close-btn {
+      margin-top: 15px;
+      background-color: #dc3545;
+    }
+
+    .close-btn:hover {
+      background-color: #a71d2a;
     }
   </style>
-  <!-- مكتبة تحويل الصور إلى PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
-<div class="container">
-  <h2>إدخال المستندات (PDF)</h2>
-
-  <!-- خيار رفع ملف PDF جاهز -->
-  <label for="pdf-input" class="upload-zone">
-    <div>📄 اضغط هنا لاختيار ملف PDF من الجهاز</div>
-  </label>
-  <input type="file" id="pdf-input" accept="application/pdf">
-
-  <div style="text-align:center; margin: 10px 0; color: #64748b;">أو</div>
-
-  <!-- خيار التقاط مستند بالكاميرا وتحويله لـ PDF -->
-  <label for="camera-input">
-    <div class="btn btn-camera" style="text-align:center;">📷 تصوير مستند بالكاميرا تحويله لـ PDF</div>
-  </label>
-  <input type="file" id="camera-input" accept="image/*" capture="environment">
-
-  <!-- منطقة معاينة المستند -->
-  <div id="preview-container">
-    <h3 style="color:#cbd5e1; font-size:14px;">معاينة المستند المرفوع:</h3>
-    <div id="preview-content"></div>
+  <div class="container">
+    <h2>مسح الباركود</h2>
+    <!-- الحقل الذي سيرد فيه الكود -->
+    <input type="text" id="barcodeResult" placeholder="سيظهر الباركود هنا..." readonly>
+    <br>
+    <!-- زر فتح الكاميرا -->
+    <button onclick="openScanner()">فتح الكاميرا للمسح</button>
   </div>
-</div>
 
-<script>
-  const pdfInput = document.getElementById('pdf-input');
-  const cameraInput = document.getElementById('camera-input');
-  const previewContainer = document.getElementById('preview-container');
-  const previewContent = document.getElementById('preview-content');
+  <!-- النافذة المنبثقة -->
+  <div id="scannerModal" class="modal">
+    <div class="modal-content">
+      <h3>وجّه الكاميرا نحو الباركود</h3>
+      <div id="reader"></div>
+      <button class="close-btn" onclick="closeScanner()">إغلاق الكاميرا</button>
+    </div>
+  </div>
 
-  // 1. عند اختيار ملف PDF مباشر
-  pdfInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file && file.type === "application/pdf") {
-      const fileURL = URL.createObjectURL(file);
-      previewContent.innerHTML = `<iframe src="${fileURL}"></iframe>`;
-      previewContainer.style.display = 'block';
-    }
-  });
+  <script>
+    let html5QrcodeScanner = null;
 
-  // 2. عند تصوير مستند بالكاميرا وتحويله تلقائياً لـ PDF
-  cameraInput.addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const imgData = event.target.result;
-        
-        // إنشاء ملف PDF جديد
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        const img = new Image();
-        img.src = imgData;
-        img.onload = function() {
-          // ضبط مقاسات الصورة على صفحة A4
-          pdf.addImage(img, 'JPEG', 10, 10, 190, 270);
-          const pdfBlob = pdf.output('blob');
-          const pdfURL = URL.createObjectURL(pdfBlob);
+    function openScanner() {
+      // إظهار النافذة المنبثقة
+      document.getElementById('scannerModal').style.display = 'flex';
 
-          previewContent.innerHTML = `
-            <iframe src="${pdfURL}"></iframe>
-            <p style="color:#22c55e; font-size:13px; margin-top:8px;">✅ تم تحويل الصورة إلى مستند PDF بنجاح!</p>
-          `;
-          previewContainer.style.display = 'block';
-        };
+      // تهيئة القارئ
+      html5QrcodeScanner = new Html5Qrcode("reader");
+
+      const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 150 } // أبعاد مربع المسح
       };
-      reader.readAsDataURL(file);
+
+      // تشغيل الكاميرا الخلفية (facingMode: "environment")
+      html5QrcodeScanner.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess
+      ).catch(err => {
+        alert("تعذر الوصول إلى الكاميرا: " + err);
+        closeScanner();
+      });
     }
-  });
-</script>
+
+    // الدالة التي تعمل فور قراءة الباركود بنجاح
+    function onScanSuccess(decodedText) {
+      // كتابة النتيجة في حقل النص
+      document.getElementById('barcodeResult').value = decodedText;
+      
+      // إغلاق النافذة والكاميرا فوراً
+      closeScanner();
+    }
+
+    // إيقاف الكاميرا وإغلاق النافذة
+    function closeScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+          document.getElementById('scannerModal').style.display = 'none';
+        }).catch(err => {
+          document.getElementById('scannerModal').style.display = 'none';
+        });
+      } else {
+        document.getElementById('scannerModal').style.display = 'none';
+      }
+    }
+  </script>
 
 </body>
 </html>
