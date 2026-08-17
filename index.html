@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قارئ الباركود</title>
-  <!-- مكتبة قراءة الباركود -->
+  <title>قارئ الباركود الخطي</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
   <style>
@@ -15,7 +14,6 @@
       background-color: #f4f4f9;
     }
 
-    /* تنسيق المدخلات والأزرار */
     .container {
       max-width: 400px;
       margin: 0 auto;
@@ -29,28 +27,24 @@
       width: 90%;
       padding: 12px;
       margin: 15px 0;
-      font-size: 16px;
+      font-size: 18px;
       border: 2px solid #ddd;
       border-radius: 8px;
       text-align: center;
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     button {
       padding: 12px 24px;
       font-size: 16px;
-      background-color: #007bff;
+      background-color: #28a745;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      transition: 0.2s;
     }
 
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    /* نافذة الكاميرا المنبثقة (Modal) */
     .modal {
       display: none;
       position: fixed;
@@ -58,7 +52,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.8);
       justify-content: center;
       align-items: center;
       z-index: 1000;
@@ -69,8 +63,7 @@
       padding: 20px;
       border-radius: 12px;
       width: 90%;
-      max-width: 400px;
-      position: relative;
+      max-width: 450px;
     }
 
     #reader {
@@ -81,29 +74,22 @@
       margin-top: 15px;
       background-color: #dc3545;
     }
-
-    .close-btn:hover {
-      background-color: #a71d2a;
-    }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h2>مسح الباركود</h2>
-    <!-- الحقل الذي سيرد فيه الكود -->
-    <input type="text" id="barcodeResult" placeholder="سيظهر الباركود هنا..." readonly>
+    <h2>مسح باركود (Code 39 / خطوط)</h2>
+    <input type="text" id="barcodeResult" placeholder="رقم الباركود..." readonly>
     <br>
-    <!-- زر فتح الكاميرا -->
-    <button onclick="openScanner()">فتح الكاميرا للمسح</button>
+    <button onclick="openScanner()">مسح الباركود</button>
   </div>
 
-  <!-- النافذة المنبثقة -->
   <div id="scannerModal" class="modal">
     <div class="modal-content">
-      <h3>وجّه الكاميرا نحو الباركود</h3>
+      <h3>ضع الخطوط داخل المستطيل</h3>
       <div id="reader"></div>
-      <button class="close-btn" onclick="closeScanner()">إغلاق الكاميرا</button>
+      <button class="close-btn" onclick="closeScanner()">إغلاق</button>
     </div>
   </div>
 
@@ -111,44 +97,44 @@
     let html5QrcodeScanner = null;
 
     function openScanner() {
-      // إظهار النافذة المنبثقة
       document.getElementById('scannerModal').style.display = 'flex';
 
-      // تهيئة القارئ
       html5QrcodeScanner = new Html5Qrcode("reader");
 
+      // إعدادات مستطيل المسح أفقي يناسب الباركود الخطي (عرض أطول وارتفاع أقل)
       const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 150 } // أبعاد مربع المسح
+        fps: 15, 
+        qrbox: { width: 300, height: 100 },
+        // تحديد الأنواع المقبولة (Code 39 + الأنواع الخطية الشائعة)
+        formatsToSupport: [ 
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.UPC_A
+        ]
       };
 
-      // تشغيل الكاميرا الخلفية (facingMode: "environment")
       html5QrcodeScanner.start(
         { facingMode: "environment" }, 
         config, 
         onScanSuccess
       ).catch(err => {
-        alert("تعذر الوصول إلى الكاميرا: " + err);
+        alert("خطأ في تشغيل الكاميرا: " + err);
         closeScanner();
       });
     }
 
-    // الدالة التي تعمل فور قراءة الباركود بنجاح
     function onScanSuccess(decodedText) {
-      // كتابة النتيجة في حقل النص
       document.getElementById('barcodeResult').value = decodedText;
-      
-      // إغلاق النافذة والكاميرا فوراً
       closeScanner();
     }
 
-    // إيقاف الكاميرا وإغلاق النافذة
     function closeScanner() {
       if (html5QrcodeScanner) {
         html5QrcodeScanner.stop().then(() => {
           html5QrcodeScanner.clear();
           document.getElementById('scannerModal').style.display = 'none';
-        }).catch(err => {
+        }).catch(() => {
           document.getElementById('scannerModal').style.display = 'none';
         });
       } else {
