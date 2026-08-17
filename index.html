@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قارئ الباركود الخطي</title>
+  <title>قارئ الباركود المستمر</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      padding: 30px;
+      padding: 20px;
       text-align: center;
       background-color: #f4f4f9;
     }
 
     .container {
-      max-width: 400px;
+      max-width: 450px;
       margin: 0 auto;
       background: white;
       padding: 20px;
@@ -23,28 +23,22 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    input[type="text"] {
-      width: 90%;
-      padding: 12px;
-      margin: 15px 0;
-      font-size: 18px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      text-align: center;
-      font-weight: bold;
-      letter-spacing: 1px;
-    }
-
     button {
-      padding: 12px 24px;
+      padding: 12px 20px;
       font-size: 16px;
       background-color: #28a745;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      margin: 5px;
     }
 
+    .btn-danger {
+      background-color: #dc3545;
+    }
+
+    /* النافذة المنبثقة */
     .modal {
       display: none;
       position: fixed;
@@ -52,7 +46,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
+      background-color: rgba(0, 0, 0, 0.85);
       justify-content: center;
       align-items: center;
       z-index: 1000;
@@ -68,44 +62,88 @@
 
     #reader {
       width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
     }
 
-    .close-btn {
-      margin-top: 15px;
-      background-color: #dc3545;
+    /* تنسيق قائمة الباركود */
+    .list-container {
+      margin-top: 20px;
+      text-align: right;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    li {
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fafafa;
+    }
+
+    li:nth-child(even) {
+      background-color: #fff;
+    }
+
+    .badge {
+      background: #007bff;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h2>مسح باركود (Code 39 / خطوط)</h2>
-    <input type="text" id="barcodeResult" placeholder="رقم الباركود..." readonly>
-    <br>
-    <button onclick="openScanner()">مسح الباركود</button>
+    <h2>قارئ الباركود المستمر</h2>
+    
+    <button onclick="openScanner()">فتح الكاميرا ومسح الكل</button>
+    
+    <!-- قائمة الأكواد المسجلة -->
+    <div class="list-container">
+      <h3>الأكواد المسجلة (<span id="count">0</span>):</h3>
+      <ul id="barcodeList">
+        <!-- تضاف الأكواد هنا تلقائياً -->
+      </ul>
+      <button class="btn-danger" onclick="clearList()">مسح القائمة</button>
+    </div>
   </div>
 
+  <!-- النافذة المنبثقة للكانير -->
   <div id="scannerModal" class="modal">
     <div class="modal-content">
-      <h3>ضع الخطوط داخل المستطيل</h3>
+      <h3>الكاميرا تعمل... وجّه الباركود</h3>
       <div id="reader"></div>
-      <button class="close-btn" onclick="closeScanner()">إغلاق</button>
+      <p id="statusMessage" style="color: green; font-weight: bold; height: 20px;"></p>
+      <button class="btn-danger" onclick="closeScanner()">إغلاق الكاميرا</button>
     </div>
   </div>
 
   <script>
     let html5QrcodeScanner = null;
+    let lastScannedCode = "";
+    let lastScannedTime = 0;
+    let scanCount = 0;
 
     function openScanner() {
       document.getElementById('scannerModal').style.display = 'flex';
 
       html5QrcodeScanner = new Html5Qrcode("reader");
 
-      // إعدادات مستطيل المسح أفقي يناسب الباركود الخطي (عرض أطول وارتفاع أقل)
       const config = { 
         fps: 15, 
         qrbox: { width: 300, height: 100 },
-        // تحديد الأنواع المقبولة (Code 39 + الأنواع الخطية الشائعة)
         formatsToSupport: [ 
           Html5QrcodeSupportedFormats.CODE_39,
           Html5QrcodeSupportedFormats.CODE_128,
@@ -125,8 +163,47 @@
     }
 
     function onScanSuccess(decodedText) {
-      document.getElementById('barcodeResult').value = decodedText;
-      closeScanner();
+      const currentTime = Date.now();
+
+      // تجنب القراءة المكررة لنفس الكود خلال ثانيتين (2000 مللي ثانية)
+      if (decodedText === lastScannedCode && (currentTime - lastScannedTime) < 2000) {
+        return;
+      }
+
+      lastScannedCode = decodedText;
+      lastScannedTime = currentTime;
+
+      // إضافة الكود للقائمة
+      addBarcodeToList(decodedText);
+
+      // تنبيه مرئي سريع داخل النافذة المنبثقة
+      const statusMsg = document.getElementById('statusMessage');
+      statusMsg.innerText = `تم قراءة: ${decodedText}`;
+      setTimeout(() => { statusMsg.innerText = ""; }, 1500);
+    }
+
+    function addBarcodeToList(code) {
+      scanCount++;
+      document.getElementById('count').innerText = scanCount;
+
+      const list = document.getElementById('barcodeList');
+      const li = document.createElement('li');
+      
+      const timeString = new Date().toLocaleTimeString('ar-SA');
+      
+      li.innerHTML = `
+        <span><strong>${code}</strong></span>
+        <span class="badge">${timeString}</span>
+      `;
+
+      // إضافة العنصر الجديد في أعلى القائمة
+      list.insertBefore(li, list.firstChild);
+    }
+
+    function clearList() {
+      document.getElementById('barcodeList').innerHTML = "";
+      scanCount = 0;
+      document.getElementById('count').innerText = 0;
     }
 
     function closeScanner() {
