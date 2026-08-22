@@ -1,224 +1,218 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قارئ الباركود المستمر</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      padding: 20px;
-      text-align: center;
-      background-color: #f4f4f9;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض تصميم الثريا ثلاثي الأبعاد (قطر 80 سم)</title>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-    .container {
-      max-width: 450px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+        body {
+            background-color: #ffffff;
+            color: #1a1a1a;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin: 5px;
-    }
+        .viewport {
+            flex: 1;
+            position: relative;
+            background: #ffffff;
+            width: 100vw;
+            height: 100vh;
+        }
 
-    .btn-danger {
-      background-color: #dc3545;
-    }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
 
-    /* النافذة المنبثقة */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.85);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-
-    .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 450px;
-    }
-
-    #reader {
-      width: 100%;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    /* تنسيق قائمة الباركود */
-    .list-container {
-      margin-top: 20px;
-      text-align: right;
-    }
-
-    ul {
-      list-style-type: none;
-      padding: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-    }
-
-    li {
-      padding: 10px 15px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background-color: #fafafa;
-    }
-
-    li:nth-child(even) {
-      background-color: #fff;
-    }
-
-    .badge {
-      background: #007bff;
-      color: white;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 12px;
-    }
-  </style>
+        .view-instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1a1a1a;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="container">
-    <h2>قارئ الباركود المستمر</h2>
-    
-    <button onclick="openScanner()">فتح الكاميرا ومسح الكل</button>
-    
-    <!-- قائمة الأكواد المسجلة -->
-    <div class="list-container">
-      <h3>الأكواد المسجلة (<span id="count">0</span>):</h3>
-      <ul id="barcodeList">
-        <!-- تضاف الأكواد هنا تلقائياً -->
-      </ul>
-      <button class="btn-danger" onclick="clearList()">مسح القائمة</button>
+    <div class="viewport">
+        <div id="canvas-container"></div>
+        <div class="view-instructions">
+            💡 <b>التحكم بالحركة:</b> اسحب بالماوس للتدوير | التكبير والتقريب بكرة الماوس | الزر الأيمن للتحريك
+        </div>
     </div>
-  </div>
 
-  <!-- النافذة المنبثقة للكانير -->
-  <div id="scannerModal" class="modal">
-    <div class="modal-content">
-      <h3>الكاميرا تعمل... وجّه الباركود</h3>
-      <div id="reader"></div>
-      <p id="statusMessage" style="color: green; font-weight: bold; height: 20px;"></p>
-      <button class="btn-danger" onclick="closeScanner()">إغلاق الكاميرا</button>
-    </div>
-  </div>
+    <script>
+        let gridData = [];
 
-  <script>
-    let html5QrcodeScanner = null;
-    let lastScannedCode = "";
-    let lastScannedTime = 0;
-    let scanCount = 0;
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
 
-    function openScanner() {
-      document.getElementById('scannerModal').style.display = 'flex';
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
 
-      html5QrcodeScanner = new Html5Qrcode("reader");
+        const dirLight = new THREE.DirectionalLight(0x555555, 0.8);
+        dirLight.position.set(50, 100, 50);
+        scene.add(dirLight);
 
-      const config = { 
-        fps: 15, 
-        qrbox: { width: 300, height: 100 },
-        formatsToSupport: [ 
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.UPC_A
-        ]
-      };
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
 
-      html5QrcodeScanner.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess
-      ).catch(err => {
-        alert("خطأ في تشغيل الكاميرا: " + err);
-        closeScanner();
-      });
-    }
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
 
-    function onScanSuccess(decodedText) {
-      const currentTime = Date.now();
+        const chandelierGroup = new THREE.Group();
+        scene.add(chandelierGroup);
 
-      // تجنب القراءة المكررة لنفس الكود خلال ثانيتين (2000 مللي ثانية)
-      if (decodedText === lastScannedCode && (currentTime - lastScannedTime) < 2000) {
-        return;
-      }
-
-      lastScannedCode = decodedText;
-      lastScannedTime = currentTime;
-
-      // إضافة الكود للقائمة
-      addBarcodeToList(decodedText);
-
-      // تنبيه مرئي سريع داخل النافذة المنبثقة
-      const statusMsg = document.getElementById('statusMessage');
-      statusMsg.innerText = `تم قراءة: ${decodedText}`;
-      setTimeout(() => { statusMsg.innerText = ""; }, 1500);
-    }
-
-    function addBarcodeToList(code) {
-      scanCount++;
-      document.getElementById('count').innerText = scanCount;
-
-      const list = document.getElementById('barcodeList');
-      const li = document.createElement('li');
-      
-      const timeString = new Date().toLocaleTimeString('ar-SA');
-      
-      li.innerHTML = `
-        <span><strong>${code}</strong></span>
-        <span class="badge">${timeString}</span>
-      `;
-
-      // إضافة العنصر الجديد في أعلى القائمة
-      list.insertBefore(li, list.firstChild);
-    }
-
-    function clearList() {
-      document.getElementById('barcodeList').innerHTML = "";
-      scanCount = 0;
-      document.getElementById('count').innerText = 0;
-    }
-
-    function closeScanner() {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => {
-          html5QrcodeScanner.clear();
-          document.getElementById('scannerModal').style.display = 'none';
-        }).catch(() => {
-          document.getElementById('scannerModal').style.display = 'none';
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
         });
-      } else {
-        document.getElementById('scannerModal').style.display = 'none';
-      }
-    }
-  </script>
 
+        function initCustomDesign() {
+            gridData = [];
+            let id = 1;
+            const diameter = 80;
+            const radius = diameter / 2; // 40 cm
+
+            const ringsConfig = [
+                { ringIndex: 1, pointsCount: 4, radius: radius * 0.2 },
+                { ringIndex: 2, pointsCount: 8, radius: radius * 0.4 },
+                { ringIndex: 3, pointsCount: 10, radius: radius * 0.6 },
+                { ringIndex: 4, pointsCount: 16, radius: radius * 0.8 },
+                { ringIndex: 5, pointsCount: 22, radius: radius * 1.0 }
+            ];
+
+            ringsConfig.forEach(config => {
+                const numPoints = config.pointsCount;
+                const r = config.radius;
+
+                for (let p = 0; p < numPoints; p++) {
+                    const angle = (p / numPoints) * Math.PI * 2;
+                    const x = Math.cos(angle) * r;
+                    const y = Math.sin(angle) * r;
+                    let dropMeters = 0;
+
+                    // تعديل طول الوسط (4 حبات) إلى 3 متر[cite: 5]
+                    if (config.ringIndex === 1) {
+                        dropMeters = 3.0; // 3 أمتار
+                    } else if (config.ringIndex === 2) {
+                        dropMeters = (p % 2 === 0) ? 3.5 : 4.0;
+                    } else if (config.ringIndex === 3) {
+                        dropMeters = (p % 2 === 0) ? 4.5 : 5.0;
+                    } else if (config.ringIndex === 4) {
+                        dropMeters = (p % 2 === 0) ? 5.5 : 6.0;
+                    } else if (config.ringIndex === 5) {
+                        dropMeters = (p % 2 === 0) ? 6.5 : 7.0;
+                    }
+
+                    gridData.push({
+                        id: id++,
+                        ring: config.ringIndex,
+                        x: Math.round(x * 10) / 10,
+                        y: Math.round(y * 10) / 10,
+                        dropMeters: dropMeters
+                    });
+                }
+            });
+
+            render3D();
+        }
+
+        function render3D() {
+            while(chandelierGroup.children.length > 0) { 
+                chandelierGroup.remove(chandelierGroup.children[0]); 
+            }
+
+            const diameter = 80;
+            const ceilingGeo = new THREE.CircleGeometry(diameter / 2, 64);
+            const ceilingMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0, side: THREE.DoubleSide });
+            const ceilingMesh = new THREE.Mesh(ceilingGeo, ceilingMat);
+            ceilingMesh.rotation.x = Math.PI / 2;
+            chandelierGroup.add(ceilingMesh);
+
+            const borderGeo = new THREE.RingGeometry(diameter / 2 - 0.5, diameter / 2, 64);
+            const borderMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+            const border = new THREE.Mesh(borderGeo, borderMat);
+            border.rotation.x = Math.PI / 2;
+            chandelierGroup.add(border);
+
+            const stringMat = new THREE.LineBasicMaterial({ color: 0x000000 });
+            
+            // قطر الكرات 7 سم (نصف القطر 3.5 سم)
+            const sphereGeo = new THREE.SphereGeometry(3.5, 32, 32); 
+            const sphereMat = new THREE.MeshStandardMaterial({ 
+                color: 0x222222, 
+                roughness: 0.2,
+                metalness: 0.8
+            });
+
+            gridData.forEach(p => {
+                const posX = p.x;
+                const posZ = p.y;
+                const dropCm = p.dropMeters * 100; 
+
+                // نقطة التثبيت في السقف
+                const topDotGeo = new THREE.CircleGeometry(0.8, 12);
+                const topDotMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+                const topDot = new THREE.Mesh(topDotGeo, topDotMat);
+                topDot.rotation.x = Math.PI / 2;
+                topDot.position.set(posX, 0.1, posZ);
+                chandelierGroup.add(topDot);
+
+                if (dropCm > 0) {
+                    // سلك الوتر
+                    const points = [
+                        new THREE.Vector3(posX, 0, posZ),
+                        new THREE.Vector3(posX, -dropCm, posZ)
+                    ];
+                    const cableGeo = new THREE.BufferGeometry().setFromPoints(points);
+                    const cable = new THREE.Line(cableGeo, stringMat);
+                    chandelierGroup.add(cable);
+
+                    // الكرة المعلقة
+                    const ball = new THREE.Mesh(sphereGeo, sphereMat);
+                    ball.position.set(posX, -dropCm, posZ);
+                    chandelierGroup.add(ball);
+                }
+            });
+
+            camera.position.set(150, 200, 400);
+            camera.lookAt(0, -300, 0);
+            controls.target.set(0, -300, 0);
+            controls.update();
+        }
+
+        initCustomDesign();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
 </body>
 </html>
